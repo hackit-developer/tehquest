@@ -3,8 +3,8 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-// Path logic: Move DB to home directory to bypass filesystem restrictions in 'Videos' folder
-const dbDir = path.join(os.homedir(), '.quizportal');
+// Path logic: Store DB in the project root directory
+const dbDir = path.join(__dirname, '../database');
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }

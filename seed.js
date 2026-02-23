@@ -461,30 +461,33 @@ const quizData = {
 };
 
 try {
-    // Clean up existing quiz with the same code to allow re-seeding
-    db.prepare('DELETE FROM quizzes WHERE code = ?').run(quizData.code);
+    // Check if quiz already exists to avoid wiping history on every restart/deploy
+    const existingQuiz = db.prepare('SELECT id FROM quizzes WHERE code = ?').get(quizData.code);
 
-    const insertQuiz = db.prepare('INSERT INTO quizzes (title, description, code, password, time_limit) VALUES (?, ?, ?, ?, ?)');
+    if (existingQuiz) {
+        console.log(`Quiz with code ${quizData.code} already exists. Skipping seed.`);
+    } else {
+        const insertQuiz = db.prepare('INSERT INTO quizzes (title, description, code, password, time_limit) VALUES (?, ?, ?, ?, ?)');
+        const quizResult = insertQuiz.run(quizData.title, quizData.description, quizData.code, quizData.password, quizData.time_limit);
+        const quizId = quizResult.lastInsertRowid;
 
-    const quizResult = insertQuiz.run(quizData.title, quizData.description, quizData.code, quizData.password, quizData.time_limit);
-    const quizId = quizResult.lastInsertRowid;
+        const insertQuestion = db.prepare('INSERT INTO questions (quiz_id, question_text) VALUES (?, ?)');
+        const insertOption = db.prepare('INSERT INTO options (question_id, option_text, is_correct) VALUES (?, ?, ?)');
 
-    const insertQuestion = db.prepare('INSERT INTO questions (quiz_id, question_text) VALUES (?, ?)');
-    const insertOption = db.prepare('INSERT INTO options (question_id, option_text, is_correct) VALUES (?, ?, ?)');
+        const transaction = db.transaction(() => {
+            for (const q of quizData.questions) {
+                const qResult = insertQuestion.run(quizId, q.text);
+                const questionId = qResult.lastInsertRowid;
 
-    const transaction = db.transaction(() => {
-        for (const q of quizData.questions) {
-            const qResult = insertQuestion.run(quizId, q.text);
-            const questionId = qResult.lastInsertRowid;
-
-            for (const opt of q.options) {
-                insertOption.run(questionId, opt.text, opt.isCorrect ? 1 : 0);
+                for (const opt of q.options) {
+                    insertOption.run(questionId, opt.text, opt.isCorrect ? 1 : 0);
+                }
             }
-        }
-    });
+        });
 
-    transaction();
-    console.log(`Successfully seeded quiz: ${quizData.title} (Code: ${quizData.code})`);
+        transaction();
+        console.log(`Successfully seeded quiz: ${quizData.title} (Code: ${quizData.code})`);
+    }
 } catch (err) {
     console.error('Error seeding data:', err.message);
 }

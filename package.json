@@ -4,7 +4,7 @@
     "description": "Premium Quiz Portal",
     "main": "server/index.js",
     "scripts": {
-        "start": "node server/index.js",
+        "start": "node seed.js && node server/index.js",
         "seed": "node seed.js"
     },
     "dependencies": {
