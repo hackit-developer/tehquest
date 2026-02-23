@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizPortal | Join Quiz</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container animate-fade" style="max-width: 500px; margin-top: 10vh;">
+        <div class="text-center mb-4">
+            <h1 style="color: var(--primary);">QuizPortal</h1>
+            <p>Enter your quiz code to begin your assessment.</p>
+        </div>
+
+        <div class="card glass">
+            <div class="input-group">
+                <label for="quiz-code">Quiz Code</label>
+                <input type="text" id="quiz-code" placeholder="e.g. CS101" autofocus>
+            </div>
+            <div class="input-group">
+                <label for="quiz-pass">Security Key (Optional)</label>
+                <input type="password" id="quiz-pass" placeholder="Enter if required">
+            </div>
+            <button id="join-btn" class="btn btn-primary" style="width: 100%;">
+                Access Quiz
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="text-center mt-8">
+            <a href="login.html" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">Admin
+                Dashboard</a>
+        </div>
+    </div>
+
+    <script src="js/ui.js"></script>
+    <script>
+        document.getElementById('join-btn').addEventListener('click', () => {
+            const code = document.getElementById('quiz-code').value.trim();
+            const pass = document.getElementById('quiz-pass').value.trim();
+
+            if (!code) {
+                AppUI.notify('Please enter a quiz code', 'error');
+                return;
+            }
+
+            window.location.href = `quiz.html?code=${encodeURIComponent(code)}${pass ? `&pass=${encodeURIComponent(pass)}` : ''}`;
+        });
+
+        // Allow Enter key to submit
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('join-btn').click();
+        });
+    </script>
+</body>
+
+</html>

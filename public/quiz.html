@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ongoing Assessment | QuizPortal</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Setup View -->
+    <div id="setup-view" class="container animate-fade" style="max-width: 500px; margin-top: 10vh;">
+        <div class="card glass text-center">
+            <h2 id="quiz-title">Loading Quiz...</h2>
+            <p id="quiz-meta" class="mb-4">Calculating duration...</p>
+
+            <div class="input-group" style="text-align: left;">
+                <label for="student-name">Your Full Name</label>
+                <input type="text" id="student-name" placeholder="Name as per records">
+            </div>
+            <div class="input-group" style="text-align: left;">
+                <label for="student-roll">Roll Number / ID</label>
+                <input type="text" id="student-roll" placeholder="Registration number">
+            </div>
+
+            <button id="start-btn" class="btn btn-primary" style="width: 100%;">Initialize Assessment</button>
+        </div>
+    </div>
+
+    <!-- Active Quiz View -->
+    <div id="active-quiz" class="container hidden">
+        <header class="flex-between mb-4">
+            <div>
+                <span class="text-muted" id="q-count">Question 1 of --</span>
+                <h2 id="current-quiz-title" style="margin: 0;">--</h2>
+            </div>
+            <div class="text-center">
+                <div id="session-timer" class="card"
+                    style="padding: 0.5rem 1rem; font-family: monospace; font-size: 1.25rem; font-weight: bold; color: var(--primary);">
+                    00:00
+                </div>
+            </div>
+        </header>
+
+        <div class="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+
+        <div id="question-area" class="animate-fade">
+            <!-- Question content injected here -->
+        </div>
+
+        <footer class="flex-between mt-8">
+            <div id="question-timer" style="font-weight: bold; color: var(--secondary);">30s remaining</div>
+            <div style="display: flex; gap: 1rem;">
+                <button id="prev-btn" class="btn btn-secondary hidden">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                    Back
+                </button>
+                <button id="next-btn" class="btn btn-primary">
+                    Next Stage
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Hacker Loading Overlay -->
+    <div id="hacker-loader" class="hidden"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: monospace; overflow: hidden;">
+        <canvas id="loader-canvas"
+            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.3;"></canvas>
+        <div style="position: relative; z-index: 10000; text-align: center;">
+            <div id="loader-status"
+                style="color: #0F0; font-size: 1.5rem; text-shadow: 0 0 10px #0F0; margin-bottom: 2rem;">INITIALIZING
+                SECURE UPLOAD...</div>
+            <div
+                style="width: 300px; height: 10px; background: #111; border: 1px solid #0F0; border-radius: 5px; overflow: hidden; margin: 0 auto;">
+                <div id="loader-bar" style="width: 0%; height: 100%; background: #0F0; box-shadow: 0 0 10px #0F0;">
+                </div>
+            </div>
+            <div id="loader-pct" style="color: #0F0; margin-top: 1rem; font-size: 1.2rem;">0%</div>
+        </div>
+    </div>
+
+    <!-- Result View -->
+    <div id="result-view" class="container hidden text-center"
+        style="max-width: 500px; margin-top: 15vh; position: relative;">
+        <!-- Hacker Background Canvas -->
+        <canvas id="hacker-canvas"
+            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.15;"></canvas>
+
+        <div class="card glass" style="position: relative; z-index: 1;">
+            <div id="status-icon" style="font-size: 4rem; margin-bottom: 1rem;">🎯</div>
+            <h1 id="result-title">Assessment Complete</h1>
+            <p id="result-text" class="mb-4">Your responses have been securely recorded.</p>
+
+            <div class="card" style="background: var(--bg); margin-bottom: 2rem;">
+                <span class="text-muted"
+                    style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em;">Final Score</span>
+                <div id="final-score" style="font-size: 3rem; font-weight: 800; color: var(--primary);">0/0</div>
+            </div>
+
+            <button onclick="window.location.href='index.html'" class="btn btn-secondary" style="width: 100%;">Return to
+                Portal</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/quiz.js"></script>
+</body>
+
+</html>

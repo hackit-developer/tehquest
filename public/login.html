@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access | QuizPortal</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container animate-fade" style="max-width: 450px; margin-top: 15vh;">
+        <div class="card glass">
+            <h1 class="text-center" style="font-size: 1.75rem;">Admin Access</h1>
+            <p class="text-center mb-4">Secure login for quiz management.</p>
+
+            <div class="input-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="e.g. admin" autofocus>
+            </div>
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+
+            <button id="login-btn" class="btn btn-primary" style="width: 100%;">Authenticate</button>
+            <div class="text-center mt-4">
+                <a href="index.html" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">← Back
+                    to Student Portal</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ui.js"></script>
+    <script>
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('adminToken', data.token);
+                    window.location.href = 'admin.html';
+                } else {
+                    AppUI.notify('Authentication failed. Check credentials.', 'error');
+                }
+            } catch (err) {
+                AppUI.notify('Connection error', 'error');
+            }
+        });
+
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('login-btn').click();
+        });
+    </script>
+</body>
+
+</html>
