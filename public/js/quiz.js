@@ -2,19 +2,17 @@ let quizData = null;
 let currentQuestionIndex = 0;
 let answers = [];
 let timeLeft = 0;
-let questionTimeLeft = 30;
 let sessionTimer = null;
-let questionTimer = null;
 let isDisqualified = false;
 
 // DOM Elements
 const setupView = document.getElementById('setup-view');
+const guidelinesView = document.getElementById('guidelines-view');
 const activeQuiz = document.getElementById('active-quiz');
 const resultView = document.getElementById('result-view');
 const questionArea = document.getElementById('question-area');
 const progressBar = document.getElementById('progress-bar');
 const sessTimerDisplay = document.getElementById('session-timer');
-const qTimerDisplay = document.getElementById('question-timer');
 
 // Get Params
 const urlParams = new URLSearchParams(window.location.search);
@@ -39,7 +37,7 @@ async function init() {
 
         quizData = await response.json();
         document.getElementById('quiz-title').textContent = quizData.title;
-        document.getElementById('quiz-meta').textContent = `${quizData.questions.length} Questions | ${quizData.time_limit} Minutes`;
+        document.getElementById('quiz-meta').textContent = `${quizData.questions.length} Questions | 30 Minutes`;
     } catch (err) {
         await AppUI.alert(err.message, 'Initialization Error');
         window.location.href = 'index.html';
@@ -49,12 +47,22 @@ async function init() {
 document.getElementById('start-btn').addEventListener('click', () => {
     const name = document.getElementById('student-name').value.trim();
     const roll = document.getElementById('student-roll').value.trim();
+    const phone = document.getElementById('student-phone').value.trim();
 
-    if (!name || !roll) {
-        AppUI.notify('Please provide your name and roll number', 'error');
+    if (!name || !roll || !phone) {
+        AppUI.notify('Please provide your name, roll number, and phone number', 'error');
         return;
     }
 
+    if (!/^\d{10}$/.test(phone)) {
+        AppUI.notify('Please enter a valid 10-digit phone number', 'error');
+        return;
+    }
+
+    showGuidelines();
+});
+
+document.getElementById('accept-guidelines-btn').addEventListener('click', () => {
     startExam();
 });
 
@@ -64,12 +72,64 @@ const onVisibilityChange = () => {
 };
 const onBlur = () => triggerDisqualification();
 
-function startExam() {
+function showGuidelines() {
     setupView.classList.add('hidden');
+    guidelinesView.classList.remove('hidden');
+
+    const terminal = document.getElementById('guidelines-terminal');
+    const actions = document.getElementById('guidelines-actions');
+    terminal.innerHTML = '';
+    actions.classList.add('hidden');
+
+    const lines = [
+        `> INITIALIZING SECURITY_PROTOCOL_v2.4`,
+        `> FETCHING ASSESSMENT RULES FOR: ${quizData.title.toUpperCase()}`,
+        `> -----------------------------------------`,
+        `> RULE_01: TOTAL_DURATION = 30 MINUTES`,
+        `> RULE_02: TAB_SWITCHING = DETECTED -> DISQUALIFICATION`,
+        `> RULE_03: WINDOW_BLUR = LOGGED -> SESSION_TERMINATION`,
+        `> RULE_04: NAVIGATION = LOCKED -> NO_PREVIOUS_RECAP`,
+        `> -----------------------------------------`,
+        `> STATUS: ALL SYSTEMS SECURED. READY FOR UPLOAD.`
+    ];
+
+    let lineIdx = 0;
+    function typeLine() {
+        if (lineIdx < lines.length) {
+            const p = document.createElement('p');
+            p.style.margin = '0';
+            p.style.opacity = '0';
+            p.textContent = lines[lineIdx];
+            terminal.appendChild(p);
+
+            // Simple animation
+            let charIdx = 0;
+            p.textContent = '';
+            p.style.opacity = '1';
+
+            const typing = setInterval(() => {
+                p.textContent += lines[lineIdx][charIdx];
+                charIdx++;
+                if (charIdx === lines[lineIdx].length) {
+                    clearInterval(typing);
+                    lineIdx++;
+                    setTimeout(typeLine, 200);
+                }
+            }, 20);
+        } else {
+            actions.classList.remove('hidden');
+        }
+    }
+
+    setTimeout(typeLine, 500);
+}
+
+function startExam() {
+    guidelinesView.classList.add('hidden');
     activeQuiz.classList.remove('hidden');
     document.getElementById('current-quiz-title').textContent = quizData.title;
 
-    timeLeft = quizData.time_limit * 60;
+    timeLeft = 30 * 60; // Forced to 30 Minutes
     startSessionTimer();
     renderQuestion();
 
@@ -95,22 +155,6 @@ function startSessionTimer() {
         if (timeLeft <= 0) {
             clearInterval(sessionTimer);
             submitExam();
-        }
-    }, 1000);
-}
-
-function startQuestionTimer() {
-    if (questionTimer) clearInterval(questionTimer);
-    questionTimeLeft = 30;
-    qTimerDisplay.textContent = `${questionTimeLeft}s remaining`;
-
-    questionTimer = setInterval(() => {
-        questionTimeLeft--;
-        qTimerDisplay.textContent = `${questionTimeLeft}s remaining`;
-
-        if (questionTimeLeft <= 0) {
-            clearInterval(questionTimer);
-            nextQuestion(true);
         }
     }, 1000);
 }
@@ -145,13 +189,10 @@ function renderQuestion() {
 
     nextBtn.textContent = (currentQuestionIndex === quizData.questions.length - 1) ? 'Finalize Submission' : 'Next Stage';
 
-    if (currentQuestionIndex > 0) {
-        prevBtn.classList.remove('hidden');
-    } else {
-        prevBtn.classList.add('hidden');
-    }
+    // Navigation locked as per guidelines
+    prevBtn.classList.add('hidden');
 
-    startQuestionTimer();
+    // startQuestionTimer(); removed as per request
 }
 
 window.handleSelect = (qId, optId, btn) => {
@@ -172,14 +213,7 @@ function getSelectedOption(qId) {
 }
 
 document.getElementById('next-btn').addEventListener('click', () => nextQuestion(false));
-document.getElementById('prev-btn').addEventListener('click', prevQuestion);
 
-function prevQuestion() {
-    if (currentQuestionIndex > 0) {
-        currentQuestionIndex--;
-        renderQuestion();
-    }
-}
 
 function nextQuestion(auto = false) {
     if (currentQuestionIndex < quizData.questions.length - 1) {
@@ -196,7 +230,6 @@ function nextQuestion(auto = false) {
 
 async function submitExam(disqualified = false) {
     clearInterval(sessionTimer);
-    clearInterval(questionTimer);
 
     // Cleanup listeners
     document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -212,6 +245,7 @@ async function submitExam(disqualified = false) {
 
     const name = document.getElementById('student-name').value;
     const roll = document.getElementById('student-roll').value;
+    const phone = document.getElementById('student-phone').value;
 
     if (disqualified) {
         document.getElementById('status-icon').textContent = '⚠️';
@@ -227,6 +261,7 @@ async function submitExam(disqualified = false) {
             body: JSON.stringify({
                 studentName: name,
                 studentRoll: roll,
+                studentPhone: phone,
                 answers,
                 isDisqualified: disqualified
             })

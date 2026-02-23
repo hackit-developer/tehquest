@@ -23,8 +23,42 @@
                 <label for="student-roll">Roll Number / ID</label>
                 <input type="text" id="student-roll" placeholder="Registration number">
             </div>
+            <div class="input-group" style="text-align: left;">
+                <label for="student-phone">Phone Number</label>
+                <input type="tel" id="student-phone" placeholder="10-digit mobile number" maxlength="10">
+            </div>
 
             <button id="start-btn" class="btn btn-primary" style="width: 100%;">Initialize Assessment</button>
+        </div>
+    </div>
+
+    <!-- Guidelines View -->
+    <div id="guidelines-view" class="container hidden" style="max-width: 600px; margin-top: 5vh;">
+        <div class="card"
+            style="background: #000; border: 1px solid #10b981; color: #10b981; font-family: 'Courier New', Courier, monospace; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);">
+            <div
+                style="border-bottom: 1px solid #10b981; padding-bottom: 1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold; letter-spacing: 2px;">SYSTEM_GUIDELINES.LOG</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;"></div>
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></div>
+                </div>
+            </div>
+
+            <div id="guidelines-terminal" style="min-height: 300px; font-size: 0.95rem; line-height: 1.8;">
+                <!-- Guidelines will be typed here -->
+            </div>
+
+            <div id="guidelines-actions" class="hidden"
+                style="margin-top: 2rem; border-top: 1px solid #10b981; padding-top: 1.5rem; text-align: center;">
+                <p style="color: #10b981; margin-bottom: 1rem; font-size: 0.8rem;">[ Proceed only if you accept all
+                    security protocols ]</p>
+                <button id="accept-guidelines-btn" class="btn"
+                    style="background: #10b981; color: #000; width: 100%; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+                    Accept & Initialize Session
+                </button>
+            </div>
         </div>
     </div>
 
@@ -52,7 +86,7 @@
         </div>
 
         <footer class="flex-between mt-8">
-            <div id="question-timer" style="font-weight: bold; color: var(--secondary);">30s remaining</div>
+            <div></div> <!-- Spacer -->
             <div style="display: flex; gap: 1rem;">
                 <button id="prev-btn" class="btn btn-secondary hidden">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

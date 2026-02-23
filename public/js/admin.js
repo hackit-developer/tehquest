@@ -109,7 +109,8 @@ function renderSubmissionsTable() {
 
     let filtered = currentSubmissions.filter(s =>
         s.student_name.toLowerCase().includes(searchTerm) ||
-        (s.student_roll && s.student_roll.toLowerCase().includes(searchTerm))
+        (s.student_roll && s.student_roll.toLowerCase().includes(searchTerm)) ||
+        (s.student_phone && s.student_phone.toLowerCase().includes(searchTerm))
     );
 
     filtered.sort((a, b) => {
@@ -128,6 +129,7 @@ function renderSubmissionsTable() {
             <tr>
                 <td><strong>${s.student_name}</strong></td>
                 <td>${s.student_roll || 'N/A'}</td>
+                <td>${s.student_phone || 'N/A'}</td>
                 <td><span style="font-size: 1.1rem; font-weight: 700;">${s.score}</span></td>
                 <td>
                     <span class="badge ${s.is_disqualified ? 'badge-error' : 'badge-success'}">
@@ -148,10 +150,11 @@ document.getElementById('sub-sort')?.addEventListener('change', renderSubmission
 window.downloadCSV = () => {
     if (currentSubmissions.length === 0) return AppUI.notify('No data to export', 'error');
 
-    const headers = ['Candidate', 'Roll Number', 'Score', 'Status', 'Submission Time'];
+    const headers = ['Candidate', 'Roll Number', 'Phone Number', 'Score', 'Status', 'Submission Time'];
     const rows = currentSubmissions.map(s => [
         `"${s.student_name}"`,
         `"${s.student_roll || 'N/A'}"`,
+        `"${s.student_phone || 'N/A'}"`,
         s.score,
         s.is_disqualified ? 'Disqualified' : 'Submitted',
         `"${new Date(s.submitted_at).toLocaleString()}"`
@@ -188,6 +191,7 @@ window.downloadPDF = () => {
     const body = currentSubmissions.map(s => [
         s.student_name,
         s.student_roll || 'N/A',
+        s.student_phone || 'N/A',
         s.score,
         s.is_disqualified ? 'Disqualified' : 'Submitted',
         new Date(s.submitted_at).toLocaleString()
@@ -195,7 +199,7 @@ window.downloadPDF = () => {
 
     doc.autoTable({
         startY: 40,
-        head: [['Candidate', 'Roll/ID', 'Score', 'Status', 'Timestamp']],
+        head: [['Candidate', 'Roll/ID', 'Phone', 'Score', 'Status', 'Timestamp']],
         body: body,
         theme: 'striped',
         headStyles: { fillColor: [99, 102, 241] } // var(--primary) equivalent

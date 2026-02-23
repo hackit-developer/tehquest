@@ -68,10 +68,10 @@ app.get('/api/quizzes/:code', (req, res) => {
 
 app.post('/api/quizzes/:id/submit', (req, res) => {
     try {
-        const { studentName, studentRoll, answers, isDisqualified } = req.body;
+        const { studentName, studentRoll, studentPhone, answers, isDisqualified } = req.body;
         const quizId = req.params.id;
 
-        if (!studentName || !studentRoll) {
+        if (!studentName || !studentRoll || !studentPhone) {
             return res.status(400).json({ error: 'Missing student details' });
         }
 
@@ -90,9 +90,9 @@ app.post('/api/quizzes/:id/submit', (req, res) => {
         }
 
         db.prepare(`
-            INSERT INTO submissions (quiz_id, student_name, student_roll, score, is_disqualified, submitted_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `).run(quizId, studentName, studentRoll, score, isDisqualified ? 1 : 0, new Date().toISOString());
+            INSERT INTO submissions (quiz_id, student_name, student_roll, student_phone, score, is_disqualified, submitted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(quizId, studentName, studentRoll, studentPhone, score, isDisqualified ? 1 : 0, new Date().toISOString());
 
         res.json({ success: true, score, total: questions.length });
     } catch (err) {
