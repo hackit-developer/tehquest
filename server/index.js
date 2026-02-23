@@ -12,8 +12,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Security Constants
 const ADMIN_CONFIG = {
-    username: 'admin',
-    password: 'password123',
+    username: 'loginbysp',
+    password: 'sureshit2005',
     token: 'super-secret-admin-token'
 };
 

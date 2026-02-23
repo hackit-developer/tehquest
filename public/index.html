@@ -33,11 +33,21 @@
             </button>
         </div>
 
-        <div class="text-center mt-8">
-            <a href="login.html" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">Admin
+        <div class="text-center mt-8" style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
+            <button id="contact-admin-btn" class="btn btn-secondary btn-sm"
+                style="border: none; background: transparent; color: var(--primary); font-weight: 600;">
+                📞 Contact Administrator
+            </button>
+            <a href="login.html"
+                style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem; opacity: 0.7;">Admin
                 Dashboard</a>
         </div>
     </div>
+
+    <footer
+        style="position: fixed; bottom: 0; width: 100%; text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.05em;">
+        Developed by <span style="color: var(--primary); font-weight: 700;">SURESH</span>
+    </footer>
 
     <script src="js/ui.js"></script>
     <script>
@@ -51,6 +61,17 @@
             }
 
             window.location.href = `quiz.html?code=${encodeURIComponent(code)}${pass ? `&pass=${encodeURIComponent(pass)}` : ''}`;
+        });
+
+        document.getElementById('contact-admin-btn').addEventListener('click', () => {
+            AppUI.alert(`
+                <div style="text-align: left; margin-top: 1rem;">
+                    <p><strong>Name:</strong> Suresh</p>
+                    <p><strong>Dept:</strong> B.Tech IT</p>
+                    <p><strong>Email:</strong> sureshit2005@gmail.com</p>
+                    <p><strong>Contact:</strong> +91 7200700535</p>
+                </div>
+            `, 'Administrator Details');
         });
 
         // Allow Enter key to submit
