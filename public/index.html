@@ -5,12 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuizPortal | Join Quiz</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 
 <body>
     <div class="container animate-fade" style="max-width: 500px; margin-top: 10vh;">
         <div class="text-center mb-4">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin-bottom: 2rem;">
+                <img src="clg%20logo.jpeg" alt="College Logo" style="height: 60px; object-fit: contain;">
+                <img src="inspire.jpg" alt="Inspire Logo" style="height: 60px; object-fit: contain;">
+            </div>
+            <h2>CATCH-2K26</h2>
             <h1 style="color: var(--primary);">QuizPortal</h1>
             <p>Enter your quiz code to begin your assessment.</p>
         </div>
@@ -38,9 +43,6 @@
                 style="border: none; background: transparent; color: var(--primary); font-weight: 600;">
                 📞 Contact Administrator
             </button>
-            <a href="login.html"
-                style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem; opacity: 0.7;">Admin
-                Dashboard</a>
         </div>
     </div>
 
@@ -49,7 +51,7 @@
         Developed by <span style="color: var(--primary); font-weight: 700;">SURESH</span>
     </footer>
 
-    <script src="js/ui.js"></script>
+    <script src="js/ui.js?v=2"></script>
     <script>
         document.getElementById('join-btn').addEventListener('click', () => {
             const code = document.getElementById('quiz-code').value.trim();

@@ -1,14 +1,56 @@
+const cluster = require('node:cluster');
+const os = require('node:os');
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+const path = require('node:path');
+const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Different port to avoid conflict
+const PORT = process.env.PORT || 3000;
 
+app.use(helmet({
+    contentSecurityPolicy: false, 
+}));
 app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+
+// 3. Compression (Gzip/Brotli)
+app.use(compression({
+    threshold: 1024, // Only compress responses > 1KB
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+    }
+}));
+
+// 4. Rate Limiting (Prevent flood)
+const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute window
+    max: 100, // Limit each IP to 100 requests per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
+app.use('/api/', limiter);
+
+// 5. Optimized JSON/Static
+app.use(express.json({ limit: '1mb' })); // Increased limit for large quizzes
+
+const staticOptions = {
+    dotfiles: 'ignore',
+    etag: true,
+    maxAge: '1d', // Cache static files for 1 day
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        }
+    }
+};
+app.use(express.static(path.join(__dirname, '../public'), staticOptions));
 
 // Security Constants
 const ADMIN_CONFIG = {
@@ -49,10 +91,14 @@ app.get('/api/quizzes/:code', (req, res) => {
             return res.status(401).json({ error: 'Incorrect quiz password' });
         }
 
-        const questions = db.prepare('SELECT id, question_text FROM questions WHERE quiz_id = ?').all(quiz.id);
+        let questions = db.prepare('SELECT id, question_text FROM questions WHERE quiz_id = ?').all(quiz.id);
+
+        // Shuffle questions on server side as well
+        questions = shuffleArray(questions);
 
         for (const q of questions) {
-            q.options = db.prepare('SELECT id, option_text FROM options WHERE question_id = ?').all(q.id);
+            let options = db.prepare('SELECT id, option_text FROM options WHERE question_id = ?').all(q.id);
+            q.options = shuffleArray(options);
         }
 
         res.json({
@@ -66,14 +112,39 @@ app.get('/api/quizzes/:code', (req, res) => {
     }
 });
 
-app.post('/api/quizzes/:id/submit', (req, res) => {
+app.get('/api/quizzes/:id/check-student', (req, res) => {
     try {
-        const { studentName, studentRoll, studentPhone, answers, isDisqualified } = req.body;
+        const { roll } = req.query;
         const quizId = req.params.id;
 
-        if (!studentName || !studentRoll || !studentPhone) {
+        if (!roll) return res.status(400).json({ error: 'Roll number required' });
+
+        const existing = db.prepare(`
+                SELECT is_disqualified FROM submissions 
+                WHERE quiz_id = ? AND student_roll = ?
+                ORDER BY submitted_at DESC LIMIT 1
+            `).get(quizId, roll);
+
+        res.json({ existing: !!existing, isDisqualified: existing ? !!existing.is_disqualified : false });
+    } catch (err) {
+        res.status(500).json({ error: 'Check failed' });
+    }
+});
+
+app.post('/api/quizzes/:id/submit', (req, res) => {
+    try {
+        const {
+            studentName, studentRoll, studentPhone,
+            studentDept, studentYear, studentSection, studentEmail,
+            answers, isDisqualified, activeTime, startedAt, tabSwitches
+        } = req.body;
+        const quizId = req.params.id;
+
+        if (!studentName || !studentRoll || !studentPhone || !studentDept || !studentYear || !studentSection || !studentEmail) {
             return res.status(400).json({ error: 'Missing student details' });
         }
+
+        console.log(`[SUBMISSION] Quiz: ${quizId}, Student: ${studentRoll}, ActiveTime: ${activeTime}, StartedAt: ${startedAt}`);
 
         let score = 0;
         const questions = db.prepare('SELECT id FROM questions WHERE quiz_id = ?').all(quizId);
@@ -90,9 +161,17 @@ app.post('/api/quizzes/:id/submit', (req, res) => {
         }
 
         db.prepare(`
-            INSERT INTO submissions (quiz_id, student_name, student_roll, student_phone, score, is_disqualified, submitted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(quizId, studentName, studentRoll, studentPhone, score, isDisqualified ? 1 : 0, new Date().toISOString());
+                INSERT INTO submissions (
+                    quiz_id, student_name, student_roll, student_phone, 
+                    student_dept, student_year, student_section, student_email,
+                    score, is_disqualified, submitted_at, active_time, started_at, tab_switches
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+            quizId, studentName, studentRoll, studentPhone,
+            studentDept, studentYear, studentSection, studentEmail,
+            score, isDisqualified ? 1 : 0, new Date().toISOString(), parseInt(activeTime) || 0, startedAt, tabSwitches || 0
+        );
 
         res.json({ success: true, score, total: questions.length });
     } catch (err) {
@@ -108,10 +187,10 @@ app.get('/api/admin/quizzes', authenticateAdmin, (req, res) => {
 
 app.get('/api/admin/quizzes/:id/submissions', authenticateAdmin, (req, res) => {
     const submissions = db.prepare(`
-        SELECT * FROM submissions 
-        WHERE quiz_id = ? 
-        ORDER BY score DESC, submitted_at ASC
-    `).all(req.params.id);
+            SELECT * FROM submissions 
+            WHERE quiz_id = ? 
+            ORDER BY score DESC, submitted_at ASC
+        `).all(req.params.id);
     res.json(submissions);
 });
 
@@ -137,9 +216,9 @@ app.post('/api/admin/quizzes', authenticateAdmin, (req, res) => {
     try {
         const transaction = db.transaction(() => {
             const quiz = db.prepare(`
-                INSERT INTO quizzes (title, description, code, password, time_limit)
-                VALUES (?, ?, ?, ?, ?)
-            `).run(title, description, code, password, time_limit);
+                    INSERT INTO quizzes (title, description, code, password, time_limit)
+                    VALUES (?, ?, ?, ?, ?)
+                `).run(title, description, code, password, time_limit);
 
             const quizId = quiz.lastInsertRowid;
 
@@ -171,10 +250,10 @@ app.put('/api/admin/quizzes/:id', authenticateAdmin, (req, res) => {
         const transaction = db.transaction(() => {
             // Update quiz meta
             db.prepare(`
-                UPDATE quizzes 
-                SET title = ?, description = ?, code = ?, password = ?, time_limit = ?
-                WHERE id = ?
-            `).run(title, description, code, password, time_limit, req.params.id);
+                    UPDATE quizzes 
+                    SET title = ?, description = ?, code = ?, password = ?, time_limit = ?
+                    WHERE id = ?
+                `).run(title, description, code, password, time_limit, req.params.id);
 
             // Clear old questions (CASCADE will clear options)
             db.prepare('DELETE FROM questions WHERE quiz_id = ?').run(req.params.id);
@@ -209,6 +288,20 @@ app.delete('/api/admin/quizzes/:id/submissions', authenticateAdmin, (req, res) =
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`NEW WEB APP Server running on http://localhost:${PORT}`);
+const server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
+
+// Tuning for High Concurrency
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
+
+function shuffleArray(array) {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+}
+

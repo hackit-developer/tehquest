@@ -4,6 +4,10 @@ let answers = [];
 let timeLeft = 0;
 let sessionTimer = null;
 let isDisqualified = false;
+let assessmentStartTime = null;
+let assessmentStartTimeISO = null;
+let tabSwitches = 0;
+let lastSwitchTime = 0;
 
 // DOM Elements
 const setupView = document.getElementById('setup-view');
@@ -12,7 +16,8 @@ const activeQuiz = document.getElementById('active-quiz');
 const resultView = document.getElementById('result-view');
 const questionArea = document.getElementById('question-area');
 const progressBar = document.getElementById('progress-bar');
-const sessTimerDisplay = document.getElementById('session-timer');
+
+const getSessTimer = () => document.getElementById('session-timer');
 
 // Get Params
 const urlParams = new URLSearchParams(window.location.search);
@@ -36,21 +41,42 @@ async function init() {
         }
 
         quizData = await response.json();
+
+        // Shuffle questions for each different person
+        quizData.questions = shuffleArray(quizData.questions);
+        quizData.questions.forEach(q => {
+            if (q.options) q.options = shuffleArray(q.options);
+        });
+
         document.getElementById('quiz-title').textContent = quizData.title;
-        document.getElementById('quiz-meta').textContent = `${quizData.questions.length} Questions | 30 Minutes`;
+        const totalDurationMins = quizData.time_limit || 30;
+        document.getElementById('quiz-meta').textContent = `${quizData.questions.length} Questions | ${totalDurationMins} Minutes`;
     } catch (err) {
         await AppUI.alert(err.message, 'Initialization Error');
         window.location.href = 'index.html';
     }
 }
 
-document.getElementById('start-btn').addEventListener('click', () => {
+function shuffleArray(array) {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+}
+
+document.getElementById('start-btn').addEventListener('click', async () => {
     const name = document.getElementById('student-name').value.trim();
     const roll = document.getElementById('student-roll').value.trim();
     const phone = document.getElementById('student-phone').value.trim();
+    const dept = document.getElementById('student-dept').value.trim();
+    const year = document.getElementById('student-year').value;
+    const section = document.getElementById('student-section').value.trim();
+    const email = document.getElementById('student-email').value.trim();
 
-    if (!name || !roll || !phone) {
-        AppUI.notify('Please provide your name, roll number, and phone number', 'error');
+    if (!name || !roll || !phone || !dept || !year || !section || !email) {
+        AppUI.notify('Please fill in all the required fields', 'error');
         return;
     }
 
@@ -59,6 +85,34 @@ document.getElementById('start-btn').addEventListener('click', () => {
         return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        AppUI.notify('Please enter a valid email address', 'error');
+        return;
+    }
+
+    // Security Check: Previous disqualification
+    try {
+        const response = await fetch(`/api/quizzes/${quizData.id}/check-student?roll=${encodeURIComponent(roll)}`);
+        const status = await response.json();
+
+        if (status.existing && status.isDisqualified) {
+            await AppUI.alert(
+                'Access Denied: Our records show you have been disqualified from this assessment for violating security protocols. Re-attempting is strictly prohibited.',
+                'SECURITY_BLACKLISTED'
+            );
+            return;
+        }
+
+        if (status.existing && !status.isDisqualified) {
+            const proceed = await AppUI.confirm('You have already submitted this assessment. Do you want to submit another attempt? (Previous scores will be preserved separately)', 'Already Attempted');
+            if (!proceed) return;
+        }
+    } catch (err) {
+        console.error('Status check failed', err);
+    }
+
+    assessmentStartTime = Date.now();
+    assessmentStartTimeISO = new Date().toISOString();
     showGuidelines();
 });
 
@@ -67,10 +121,24 @@ document.getElementById('accept-guidelines-btn').addEventListener('click', () =>
 });
 
 // Malpractice Handlers
-const onVisibilityChange = () => {
-    if (document.hidden) triggerDisqualification();
+const handleTabSwitch = () => {
+    // Debounce: ignore multiple triggers within 2 seconds
+    if (Date.now() - lastSwitchTime < 2000) return;
+    
+    lastSwitchTime = Date.now();
+    tabSwitches++;
+    
+    if (tabSwitches <= 3) {
+        AppUI.alert(`Warning (${tabSwitches}/3): You have switched tabs or minimized the window. Continuing this behavior will lead to automatic disqualification.`, 'Malpractice Warning');
+    } else {
+        triggerDisqualification();
+    }
 };
-const onBlur = () => triggerDisqualification();
+
+const onVisibilityChange = () => {
+    if (document.hidden) handleTabSwitch();
+};
+const onBlur = () => handleTabSwitch();
 
 function showGuidelines() {
     setupView.classList.add('hidden');
@@ -85,10 +153,10 @@ function showGuidelines() {
         `> INITIALIZING SECURITY_PROTOCOL_v2.4`,
         `> FETCHING ASSESSMENT RULES FOR: ${quizData.title.toUpperCase()}`,
         `> -----------------------------------------`,
-        `> RULE_01: TOTAL_DURATION = 30 MINUTES`,
-        `> RULE_02: TAB_SWITCHING = DETECTED -> DISQUALIFICATION`,
-        `> RULE_03: WINDOW_BLUR = LOGGED -> SESSION_TERMINATION`,
-        `> RULE_04: NAVIGATION = LOCKED -> NO_PREVIOUS_RECAP`,
+        `> RULE_01: TOTAL_DURATION = ${quizData.time_limit || 30} MINUTES`,
+        `> RULE_02: TAB_SWITCHING = 3 MAX EXCEPTIONS`,
+        `> RULE_03: WINDOW_BLUR = 3 MAX EXCEPTIONS`,
+        `> RULE_04: QUESTION_SHUFFLE = ACTIVE -> RANDOMIZED_SEQUENCE`,
         `> -----------------------------------------`,
         `> STATUS: ALL SYSTEMS SECURED. READY FOR UPLOAD.`
     ];
@@ -125,11 +193,18 @@ function showGuidelines() {
 }
 
 function startExam() {
+    if (!quizData || !quizData.questions) {
+        console.error('Quiz data missing during start!');
+        AppUI.alert('Session data missing. Reload the page.', 'Data Integrity Error');
+        return;
+    }
+    console.log('Starting exam with questions count:', quizData.questions.length);
     guidelinesView.classList.add('hidden');
     activeQuiz.classList.remove('hidden');
     document.getElementById('current-quiz-title').textContent = quizData.title;
 
-    timeLeft = 30 * 60; // Forced to 30 Minutes
+    if (!assessmentStartTime) assessmentStartTime = Date.now();
+    timeLeft = (quizData.time_limit || 30) * 60;
     startSessionTimer();
     renderQuestion();
 
@@ -145,16 +220,34 @@ function triggerDisqualification() {
         .then(() => submitExam(true));
 }
 
+function formatTime(n) {
+    return n.toString().length < 2 ? '0' + n : n.toString();
+}
+
+
 function startSessionTimer() {
+    const display = getSessTimer();
+    console.log('Session timer started with:', timeLeft, 'seconds');
     sessionTimer = setInterval(() => {
         timeLeft--;
         const mins = Math.floor(timeLeft / 60);
         const secs = timeLeft % 60;
-        sessTimerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        if (display) {
+            display.textContent = `${formatTime(mins)}:${formatTime(secs)}`;
+            if (timeLeft <= 300) {
+                display.style.color = '#ef4444';
+            }
+            if (timeLeft <= 60) {
+                display.style.animation = 'pulse 1s infinite';
+            }
+        }
 
         if (timeLeft <= 0) {
+            console.log('Session timer ended.');
             clearInterval(sessionTimer);
-            submitExam();
+            if (display) display.style.animation = 'none';
+            AppUI.notify('Time up! Auto-submitting assessment.', 'error');
+            submitExam(false);
         }
     }, 1000);
 }
@@ -166,13 +259,14 @@ function escapeHTML(str) {
 }
 
 function renderQuestion() {
+    console.log('Rendering question ID:', currentQuestionIndex);
     const q = quizData.questions[currentQuestionIndex];
     document.getElementById('q-count').textContent = `Question ${currentQuestionIndex + 1} of ${quizData.questions.length}`;
     progressBar.style.width = `${((currentQuestionIndex + 1) / quizData.questions.length) * 100}%`;
 
     questionArea.innerHTML = `
         <div class="card shadow-lg">
-            <h2 class="mb-4">${escapeHTML(q.question_text)}</h2>
+            <div class="mb-4" style="font-size: 1.25rem; font-weight: 700; white-space: pre-wrap; word-break: break-word;">${escapeHTML(q.question_text)}</div>
             <div id="options-grid">
                 ${q.options.map(opt => `
                     <button class="option-btn ${getSelectedOption(q.id) === opt.id ? 'selected' : ''}" 
@@ -185,14 +279,10 @@ function renderQuestion() {
     `;
 
     const nextBtn = document.getElementById('next-btn');
-    const prevBtn = document.getElementById('prev-btn');
 
     nextBtn.textContent = (currentQuestionIndex === quizData.questions.length - 1) ? 'Finalize Submission' : 'Next Stage';
 
-    // Navigation locked as per guidelines
-    prevBtn.classList.add('hidden');
 
-    // startQuestionTimer(); removed as per request
 }
 
 window.handleSelect = (qId, optId, btn) => {
@@ -213,6 +303,8 @@ function getSelectedOption(qId) {
 }
 
 document.getElementById('next-btn').addEventListener('click', () => nextQuestion(false));
+
+
 
 
 function nextQuestion(auto = false) {
@@ -246,12 +338,27 @@ async function submitExam(disqualified = false) {
     const name = document.getElementById('student-name').value;
     const roll = document.getElementById('student-roll').value;
     const phone = document.getElementById('student-phone').value;
+    const dept = document.getElementById('student-dept').value;
+    const year = document.getElementById('student-year').value;
+    const section = document.getElementById('student-section').value;
+    const email = document.getElementById('student-email').value;
+    const activeTime = assessmentStartTime ? Math.floor((Date.now() - assessmentStartTime) / 1000) : 0;
+    console.log('[TIMER] Submitting with activeTime:', activeTime, 'based on start:', assessmentStartTime);
 
     if (disqualified) {
-        document.getElementById('status-icon').textContent = '⚠️';
-        document.getElementById('result-title').textContent = 'DISQUALIFIED';
-        document.getElementById('result-text').textContent = 'Your session was terminated due to policy violation.';
-        document.getElementById('final-score').textContent = '0/0';
+        document.getElementById('status-icon').textContent = '🚫';
+        document.getElementById('result-title').textContent = 'SESSION TERMINATED';
+        document.getElementById('result-title').style.color = '#ef4444';
+        document.getElementById('result-text').textContent = 'Your assessment was flagged for a security violation. This attempt has been logged as DISQUALIFIED.';
+        document.getElementById('result-text').style.color = '#f87171';
+        document.getElementById('final-score').textContent = 'VOID';
+        document.getElementById('final-score').style.color = '#ef4444';
+
+        const card = resultView.querySelector('.card.glass');
+        if (card) {
+            card.style.borderColor = '#ef4444';
+            card.style.background = 'rgba(220, 38, 38, 0.05)';
+        }
     }
 
     try {
@@ -262,8 +369,15 @@ async function submitExam(disqualified = false) {
                 studentName: name,
                 studentRoll: roll,
                 studentPhone: phone,
+                studentDept: dept,
+                studentYear: year,
+                studentSection: section,
+                studentEmail: email,
                 answers,
-                isDisqualified: disqualified
+                isDisqualified: disqualified,
+                activeTime: Math.round(activeTime),
+                startedAt: assessmentStartTimeISO,
+                tabSwitches: tabSwitches
             })
         });
 

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | QuizPortal Admin</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=2">
     <!-- jsPDF for PDF Exports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -137,8 +137,8 @@
                                 <input type="password" id="q-password" placeholder="Optional">
                             </div>
                             <div class="input-group">
-                                <label>Duration (mins)</label>
-                                <input type="number" id="q-time" value="30">
+                                <label>Duration (Minutes)</label>
+                                <input type="number" id="q-time" placeholder="e.g. 30" value="30" min="1">
                             </div>
                         </div>
                     </div>
@@ -207,10 +207,14 @@
                                 <tr>
                                     <th>Candidate</th>
                                     <th>Roll / ID</th>
-                                    <th>Phone Number</th>
+                                    <th>Dept / Year / Sec</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
                                     <th>Score</th>
+                                    <th>Active Time</th>
                                     <th>Status</th>
-                                    <th>Submission Time</th>
+                                    <th>Tab Switches</th>
+                                    <th style="min-width: 150px;">Submission Time</th>
                                 </tr>
                             </thead>
                             <tbody id="submissions-body">
@@ -223,8 +227,8 @@
         </div>
     </div>
 
-    <script src="js/ui.js"></script>
-    <script src="js/admin.js"></script>
+    <script src="js/ui.js?v=2"></script>
+    <script src="js/admin.js?v=5"></script>
 </body>
 
 </html>

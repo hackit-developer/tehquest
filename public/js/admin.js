@@ -43,11 +43,21 @@ async function fetchQuizzes() {
 
 function renderQuizList() {
     quizListContainer.innerHTML = quizzes.map(q => `
-        <div class="quiz-item" data-id="${q.id}" onclick="viewSubmissions(${q.id}, '${q.title}', '${q.code}')">
+        <div class="quiz-item" data-id="${q.id}" data-title="${q.title.replace(/"/g, '&quot;')}" data-code="${q.code}">
             <div style="font-size: 0.9rem; font-weight: 600;">${q.title}</div>
             <div style="font-size: 0.75rem; color: var(--text-muted);">Code: ${q.code}</div>
         </div>
     `).join('');
+
+    // Attach listeners
+    document.querySelectorAll('.quiz-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const id = item.dataset.id;
+            const title = item.dataset.title.replace(/&quot;/g, '"');
+            const code = item.dataset.code;
+            viewSubmissions(id, title, code);
+        });
+    });
 }
 
 window.viewSubmissions = async (id, title, code) => {
@@ -103,6 +113,20 @@ window.viewSubmissions = async (id, title, code) => {
     };
 };
 
+const formatActiveTime = (sec) => {
+    if (sec === undefined || sec === null) return '--:--';
+    const totalSec = parseInt(sec) || 0;
+    const m = Math.floor(totalSec / 60);
+    const sRem = totalSec % 60;
+    return `${m.toString().padStart(2, '0')}:${sRem.toString().padStart(2, '0')}`;
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? dateStr : d.toLocaleString();
+};
+
 function renderSubmissionsTable() {
     const searchTerm = document.getElementById('sub-search').value.toLowerCase();
     const sortBy = document.getElementById('sub-sort').value;
@@ -110,7 +134,9 @@ function renderSubmissionsTable() {
     let filtered = currentSubmissions.filter(s =>
         s.student_name.toLowerCase().includes(searchTerm) ||
         (s.student_roll && s.student_roll.toLowerCase().includes(searchTerm)) ||
-        (s.student_phone && s.student_phone.toLowerCase().includes(searchTerm))
+        (s.student_phone && s.student_phone.toLowerCase().includes(searchTerm)) ||
+        (s.student_dept && s.student_dept.toLowerCase().includes(searchTerm)) ||
+        (s.student_email && s.student_email.toLowerCase().includes(searchTerm))
     );
 
     filtered.sort((a, b) => {
@@ -123,20 +149,26 @@ function renderSubmissionsTable() {
 
     const body = document.getElementById('submissions-body');
     if (filtered.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-muted);">No matching submissions found.</td></tr>';
+        body.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 3rem; color: var(--text-muted);">No matching submissions found.</td></tr>';
     } else {
         body.innerHTML = filtered.map(s => `
             <tr>
                 <td><strong>${s.student_name}</strong></td>
                 <td>${s.student_roll || 'N/A'}</td>
+                <td>${s.student_dept || ''} / ${s.student_year || ''} / ${s.student_section || ''}</td>
+                <td><small>${s.student_email || 'N/A'}</small></td>
                 <td>${s.student_phone || 'N/A'}</td>
                 <td><span style="font-size: 1.1rem; font-weight: 700;">${s.score}</span></td>
+                <td><span style="font-family: monospace; font-weight: 600;">${formatActiveTime(s.active_time)}</span></td>
                 <td>
                     <span class="badge ${s.is_disqualified ? 'badge-error' : 'badge-success'}">
                         ${s.is_disqualified ? 'Disqualified' : 'Submitted'}
                     </span>
                 </td>
-                <td style="font-size: 0.8rem; color: var(--text-muted);">${new Date(s.submitted_at).toLocaleString()}</td>
+                <td style="text-align: center; font-weight: bold; color: ${s.tab_switches > 0 ? 'var(--error)' : 'inherit'}">
+                    ${s.tab_switches || 0}
+                </td>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">${formatDate(s.submitted_at)}</td>
             </tr>
         `).join('');
     }
@@ -150,14 +182,20 @@ document.getElementById('sub-sort')?.addEventListener('change', renderSubmission
 window.downloadCSV = () => {
     if (currentSubmissions.length === 0) return AppUI.notify('No data to export', 'error');
 
-    const headers = ['Candidate', 'Roll Number', 'Phone Number', 'Score', 'Status', 'Submission Time'];
+    const headers = ['Candidate', 'Roll Number', 'Department', 'Year', 'Section', 'Email', 'Phone Number', 'Score', 'Active Time', 'Status', 'Tab Switches', 'Submission Time'];
     const rows = currentSubmissions.map(s => [
         `"${s.student_name}"`,
         `"${s.student_roll || 'N/A'}"`,
+        `"${s.student_dept || 'N/A'}"`,
+        `"${s.student_year || 'N/A'}"`,
+        `"${s.student_section || 'N/A'}"`,
+        `"${s.student_email || 'N/A'}"`,
         `"${s.student_phone || 'N/A'}"`,
         s.score,
+        `"${formatActiveTime(s.active_time)}"`,
         s.is_disqualified ? 'Disqualified' : 'Submitted',
-        `"${new Date(s.submitted_at).toLocaleString()}"`
+        s.tab_switches || 0,
+        `"${formatDate(s.submitted_at)}"`
     ]);
 
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -191,15 +229,19 @@ window.downloadPDF = () => {
     const body = currentSubmissions.map(s => [
         s.student_name,
         s.student_roll || 'N/A',
+        `${s.student_dept || ''} ${s.student_year || ''} ${s.student_section || ''}`,
+        s.student_email || 'N/A',
         s.student_phone || 'N/A',
         s.score,
+        formatActiveTime(s.active_time),
         s.is_disqualified ? 'Disqualified' : 'Submitted',
-        new Date(s.submitted_at).toLocaleString()
+        s.tab_switches || 0,
+        formatDate(s.submitted_at)
     ]);
 
     doc.autoTable({
         startY: 40,
-        head: [['Candidate', 'Roll/ID', 'Phone', 'Score', 'Status', 'Timestamp']],
+        head: [['Candidate', 'Roll', 'Dept/Yr/Sec', 'Email', 'Phone', 'Score', 'Active Time', 'Status', 'Switches', 'Submission Time']],
         body: body,
         theme: 'striped',
         headStyles: { fillColor: [99, 102, 241] } // var(--primary) equivalent
@@ -222,7 +264,8 @@ async function editQuiz(id) {
         document.getElementById('q-title').value = quiz.title;
         document.getElementById('q-code').value = quiz.code;
         document.getElementById('q-password').value = quiz.password || '';
-        document.getElementById('q-time').value = quiz.time_limit;
+        document.getElementById('q-time').value = quiz.time_limit || 30;
+
 
         // Populate questions
         questionsBuilder.innerHTML = '';
@@ -235,21 +278,25 @@ async function editQuiz(id) {
 
             div.innerHTML = `
                 <div class="input-group">
-                    <label>Question Text</label>
-                    <input type="text" class="q-text" placeholder="Enter your question here" value="${q.question_text}">
+                    <label>Question Text (Supports Code)</label>
+                    <textarea class="q-text" placeholder="Enter your question or code snippet here" rows="4">${q.question_text}</textarea>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     ${q.options.map((opt, i) => `
-                        <div class="flex-between" style="background: var(--bg); padding: 0.5rem; border-radius: 8px;">
-                            <input type="radio" name="correct-${qId}" value="${i}" ${i === correctIdx ? 'checked' : ''} style="width: auto; margin-right: 0.5rem;">
-                            <input type="text" class="opt-text" placeholder="Option ${i + 1}" style="background: transparent; border: none;" value="${opt.option_text}">
+                        <div style="background: var(--bg); padding: 0.5rem; border-radius: 8px; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div class="flex-between">
+                                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Option ${i + 1}</span>
+                                <input type="radio" name="correct-${qId}" value="${i}" ${i === correctIdx ? 'checked' : ''} style="width: auto;">
+                            </div>
+                            <input type="text" class="opt-text" placeholder="Enter option text" value="${opt.option_text}" style="background: transparent; border: 1px solid var(--border); width: 100%; border-radius: 4px; padding: 0.4rem;">
                         </div>
                     `).join('')}
                 </div>
-                <button onclick="this.parentElement.remove()" class="btn btn-secondary btn-sm mt-4" style="color: var(--error);">Remove Question</button>
+                <button onclick="this.parentElement.remove();" class="btn btn-secondary btn-sm mt-4" style="color: var(--error);">Remove Question</button>
             `;
             questionsBuilder.appendChild(div);
         });
+
 
         document.getElementById('publish-btn').textContent = 'Update Assessment';
         window.scrollTo(0, 0);
@@ -280,9 +327,10 @@ window.showCreate = () => {
     document.getElementById('q-title').value = '';
     document.getElementById('q-code').value = '';
     document.getElementById('q-password').value = '';
-    document.getElementById('q-time').value = '30';
+    document.getElementById('q-time').value = 30;
     questionsBuilder.innerHTML = '';
     addQuestion();
+
 };
 
 document.getElementById('create-btn').addEventListener('click', window.showCreate);
@@ -293,21 +341,26 @@ function addQuestion() {
     div.className = 'card mb-4 animate-fade';
     div.innerHTML = `
         <div class="input-group">
-            <label>Question Text</label>
-            <input type="text" class="q-text" placeholder="Enter your question here">
+            <label>Question Text (Supports Code)</label>
+            <textarea class="q-text" placeholder="Enter your question or code snippet here" rows="4"></textarea>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             ${[0, 1, 2, 3].map(i => `
-                <div class="flex-between" style="background: var(--bg); padding: 0.5rem; border-radius: 8px;">
-                    <input type="radio" name="correct-${qId}" value="${i}" ${i === 0 ? 'checked' : ''} style="width: auto; margin-right: 0.5rem;">
-                    <input type="text" class="opt-text" placeholder="Option ${i + 1}" style="background: transparent; border: none;">
+                <div style="background: var(--bg); padding: 0.5rem; border-radius: 8px; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div class="flex-between">
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Option ${i + 1}</span>
+                        <input type="radio" name="correct-${qId}" value="${i}" ${i === 0 ? 'checked' : ''} style="width: auto;">
+                    </div>
+                    <input type="text" class="opt-text" placeholder="Enter option text" style="background: transparent; border: 1px solid var(--border); width: 100%; border-radius: 4px; padding: 0.4rem;">
                 </div>
             `).join('')}
         </div>
-        <button onclick="this.parentElement.remove()" class="btn btn-secondary btn-sm mt-4" style="color: var(--error);">Remove Question</button>
+        <button onclick="this.parentElement.remove();" class="btn btn-secondary btn-sm mt-4" style="color: var(--error);">Remove Question</button>
     `;
     questionsBuilder.appendChild(div);
+
 }
+
 
 document.getElementById('add-question-btn').addEventListener('click', addQuestion);
 

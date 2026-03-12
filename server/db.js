@@ -45,6 +45,10 @@ db.exec(`
     student_name TEXT NOT NULL,
     student_roll TEXT,
     student_phone TEXT,
+    student_dept TEXT,
+    student_year TEXT,
+    student_section TEXT,
+    student_email TEXT,
     score INTEGER DEFAULT 0,
     is_disqualified BOOLEAN DEFAULT 0,
     submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -56,10 +60,23 @@ db.exec(`
   -- but we can use a safe approach or just a try-catch in JS.
 `);
 
-try {
-  db.exec('ALTER TABLE submissions ADD COLUMN student_phone TEXT');
-} catch (e) {
-  // Column likely already exists
-}
+const columns = [
+  'student_phone',
+  'student_dept',
+  'student_year',
+  'student_section',
+  'student_email',
+  'active_time',
+  'started_at',
+  'tab_switches'
+];
+
+columns.forEach(col => {
+  try {
+    db.exec(`ALTER TABLE submissions ADD COLUMN ${col} TEXT`);
+  } catch (e) {
+    // Column likely already exists
+  }
+});
 
 module.exports = db;

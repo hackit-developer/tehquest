@@ -5,13 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ongoing Assessment | QuizPortal</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 
 <body>
     <!-- Setup View -->
     <div id="setup-view" class="container animate-fade" style="max-width: 500px; margin-top: 10vh;">
         <div class="card glass text-center">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin-bottom: 2rem;">
+                <img src="clg%20logo.jpeg" alt="College Logo" style="height: 60px; object-fit: contain;">
+                <img src="inspire.jpg" alt="Inspire Logo" style="height: 60px; object-fit: contain;">
+            </div>
+
             <h2 id="quiz-title">Loading Quiz...</h2>
             <p id="quiz-meta" class="mb-4">Calculating duration...</p>
 
@@ -20,8 +25,31 @@
                 <input type="text" id="student-name" placeholder="Name as per records">
             </div>
             <div class="input-group" style="text-align: left;">
-                <label for="student-roll">Roll Number / ID</label>
-                <input type="text" id="student-roll" placeholder="Registration number">
+                <label for="student-roll">Register Number</label>
+                <input type="text" id="student-roll" placeholder="611623205---">
+            </div>
+            <div class="input-group" style="text-align: left;">
+                <label for="student-dept">Department</label>
+                <input type="text" id="student-dept" placeholder="e.g. B.Tech IT">
+            </div>
+            <div class="input-group" style="text-align: left;">
+                <label for="student-year">Year</label>
+                <select id="student-year"
+                    style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #121111;">
+                    <option value="" disabled selected>Select Year</option>
+                    <option value="I">I Year</option>
+                    <option value="II">II Year</option>
+                    <option value="III">III Year</option>
+                    <option value="IV">IV Year</option>
+                </select>
+            </div>
+            <div class="input-group" style="text-align: left;">
+                <label for="student-section">Section</label>
+                <input type="text" id="student-section" placeholder="e.g. A, B or C">
+            </div>
+            <div class="input-group" style="text-align: left;">
+                <label for="student-email">Email Address</label>
+                <input type="email" id="student-email" placeholder="example@gmail.com">
             </div>
             <div class="input-group" style="text-align: left;">
                 <label for="student-phone">Phone Number</label>
@@ -69,10 +97,10 @@
                 <span class="text-muted" id="q-count">Question 1 of --</span>
                 <h2 id="current-quiz-title" style="margin: 0;">--</h2>
             </div>
-            <div class="text-center">
+            <div class="text-center" style="display: flex; gap: 1rem; align-items: center;">
                 <div id="session-timer" class="card"
                     style="padding: 0.5rem 1rem; font-family: monospace; font-size: 1.25rem; font-weight: bold; color: var(--primary);">
-                    00:00
+                    --:--
                 </div>
             </div>
         </header>
@@ -88,13 +116,7 @@
         <footer class="flex-between mt-8">
             <div></div> <!-- Spacer -->
             <div style="display: flex; gap: 1rem;">
-                <button id="prev-btn" class="btn btn-secondary hidden">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                    Back
-                </button>
+
                 <button id="next-btn" class="btn btn-primary">
                     Next Stage
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -148,8 +170,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/quiz.js"></script>
+    <script src="js/ui.js?v=3"></script>
+    <script src="js/quiz.js?v=7"></script>
 </body>
 
 </html>
